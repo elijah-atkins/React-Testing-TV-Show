@@ -1,53 +1,85 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import Dropdown from "react-dropdown";
 import parse from "html-react-parser";
 
 import { formatSeasons } from "./utils/formatSeasons";
-
+import { fetchShow } from './api/fetchShow';
 import Episodes from "./components/Episodes";
 import "./styles.css";
 
 export default function App() {
+  const [showName, setShowName] = useState("Stranger-Things");
+  const options = ['Stranger-Things', 'Outer-Limits','King-Of-The-Hill', 'Simpsons', 'Westworld', 'Breaking-bad', 'Game-of-Thrones', 'Rick-and-Morty', 'Shameless']
   const [show, setShow] = useState(null);
+  const [toggleShow, setToggleShow] = useState(true)
   const [seasons, setSeasons] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState("");
   const episodes = seasons[selectedSeason] || [];
 
   useEffect(() => {
-    const fetchShow = () => {
-      axios
-        .get(
-          "https://api.tvmaze.com/singlesearch/shows?q=stranger-things&embed=episodes"
-        )
-        .then(res => {
-          setShow(res.data);
-          setSeasons(formatSeasons(res.data._embedded.episodes));
-        });
-    };
-    fetchShow();
-  }, []);
+    fetchShow(showName)
+      .then(res => {
+       // console.log('ea: App.js useEffect fetchShow results:',res.data);
+        setShow(res.data);
+        setSeasons(formatSeasons(res.data._embedded.episodes));
+        
+      })
+      .catch(err => {
+        console.log('Error fetchShow:', err)
+      });
+  }, [showName]);
 
-  const handleSelect = e => {
+  const handleSelect = (e) => {
+    console.log(e.value)
     setSelectedSeason(e.value);
   };
+  const toggle = () => {
+    setToggleShow(!toggleShow)
+  }
+  const handleShowSelect = (e) => {
+    setShowName(e.value);
+    //clear selected season for new show
+    setSelectedSeason("")
+    toggle()
+  }
 
   if (!show) {
     return <h2>Fetching data...</h2>;
   }
-
+  const bgStyle = {
+    backgroundImage: `url(${show.image.original})`,
+    backgroundRepeat: `no-repeat`,
+    backgroundAttachment: `fixed`,
+    backgroundPosition: `center`,
+    backgroundSize: 'cover',
+    backgroundColor: '#337',
+    backgroundBlendMode: 'soft-light'
+  };
   return (
     <div className="App">
-      <img className="poster-img" src={show.image.original} alt={show.name} />
-      <h1>{show.name}</h1>
+      <div className="poster-banner" style={bgStyle}>
+      <img className="poster-img" src={show.image.medium} alt={show.name} />
+      </div>
+      <div className="show-info">
+      {(toggleShow) ? <div className="showTitle" onClick={toggle}><h1 data-testid="showName">{show.name}</h1></div> : <Dropdown
+        label="dropdown"
+        options={options}
+        onChange={handleShowSelect}
+        value={show.name || "Select a show"}
+        placeholder="Select an Show"
+      />}
+
       {parse(show.summary)}
+
       <Dropdown
+        label="dropdown"
         options={Object.keys(seasons)}
         onChange={handleSelect}
         value={selectedSeason || "Select a season"}
-        placeholder="Select an option"
+        placeholder="Select a season"
       />
       <Episodes episodes={episodes} />
+      </div>
     </div>
   );
 }
